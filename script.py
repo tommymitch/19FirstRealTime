@@ -5,6 +5,57 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 
+import tkinter as tk
+from threading import Thread
+import queue
+import time
+
+# ===============================
+# Simple GUI
+# ===============================
+class App:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Text Display")
+        
+        # Create text widget with larger text
+        self.text_widget = tk.Text(
+            self.root,
+            font=('Arial', 48),  # Bigger font
+            wrap='word'          # Word wrapping
+        )
+        self.text_widget.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        # Configure text tag for centering
+        self.text_widget.tag_configure('center', justify='center')
+        
+        # Thread-safe queue for communication
+        self.text_queue = queue.Queue()
+        
+        # Start checking for new text every 100ms
+        self.check_queue()
+        
+    def check_queue(self):
+        try:
+            # Non-blocking get
+            while True:
+                text = self.text_queue.get_nowait()
+                # Insert text with center tag
+                self.text_widget.insert(tk.END, text + '\n', 'center')
+                self.text_widget.see(tk.END)  # Auto-scroll
+        except queue.Empty:
+            pass
+        
+        # Schedule next check
+        self.root.after(100, self.check_queue)
+    
+    def callback_function(self, text_data):
+        # This runs on your callback thread
+        self.text_queue.put(text_data)
+
+app = App()
+
+
 # ===============================
 # 1D CNN Model Definition
 # ===============================
@@ -116,7 +167,9 @@ def inertial_callback(message):
             with torch.no_grad():  # Disable gradient computation for efficiency
                 predictions = model(x_inference)
             predicted_class = torch.argmax(predictions, dim=1).item()
-            print(surfaces[predicted_class])
+            if (predicted_class < 5):
+                print(surfaces[predicted_class])
+                app.callback_function(surfaces[predicted_class])
             ct.reset()
             
     
@@ -137,6 +190,8 @@ connection.add_inertial_callback(inertial_callback)
 #connection.add_earth_acceleration_callback(earth_acceleration_callback)
 connection.open()
 
+# Your callback would call: app.callback_function("new text")
+app.root.mainloop()
 input("press enter to quit")
 
 plt.plot(arr)
