@@ -1,6 +1,7 @@
 import queue
 import tkinter as tk
 from collections import deque
+from dataclasses import dataclass
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -48,7 +49,7 @@ class App:
         # Schedule next check
         self.root.after(100, self.check_queue)
 
-    def callback_function(self, text_data):
+    def add_text(self, text_data):
         # This runs on your callback thread
         self.text_queue.put(text_data)
 
@@ -103,35 +104,14 @@ class CircularBuffer:
         return self.buffer[index]
 
 
+@dataclass
 class CounterTrigger:
-    def __init__(self, counter=0, trigger=False):
-        self.counter = counter
-        self.trigger = trigger
-
-    def increment(self):
-        """Increment the counter by 1"""
-        self.counter += 1
-
-    def decrement(self):
-        """Decrement the counter by 1"""
-        self.counter -= 1
-
-    def set_trigger(self, value):
-        """Set the trigger to True or False"""
-        self.trigger = value
-
-    def toggle_trigger(self):
-        """Toggle the trigger between True and False"""
-        self.trigger = not self.trigger
+    counter: int = 0
+    triggered: bool = False
 
     def reset(self):
-        """Reset counter to 0 and trigger to False"""
         self.counter = 0
-        self.trigger = False
-
-    def __str__(self):
-        """String representation for easy printing"""
-        return f"Counter: {self.counter}, Trigger: {self.trigger}"
+        self.triggered = False
 
 
 THRESHOLD = 2
@@ -152,15 +132,15 @@ def inertial_callback(message):
 
     global arr
 
-    if not ct.trigger and magnitude > THRESHOLD:
-        ct.trigger = True
+    if not ct.triggered and magnitude > THRESHOLD:
+        ct.triggered = True
 
-    if not ct.trigger:
+    if not ct.triggered:
         attack_buffer.append(magnitude)
 
-    if ct.trigger:
+    if ct.triggered:
         decay_buffer.append(magnitude)
-        ct.increment()
+        ct.counter += 1
         if ct.counter == DECAY:
             arr = np.concatenate([attack_buffer, decay_buffer])
             # ====
@@ -173,7 +153,7 @@ def inertial_callback(message):
             predicted_class = torch.argmax(predictions, dim=1).item()
             if predicted_class < 5:
                 print(surfaces[predicted_class])
-                app.callback_function(surfaces[predicted_class])
+                app.add_text(surfaces[predicted_class])
             ct.reset()
 
     # print(f"Bang: {magnitude}")
