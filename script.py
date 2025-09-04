@@ -132,8 +132,8 @@ class CounterTrigger:
        return f"Counter: {self.counter}, Trigger: {self.trigger}"
 
 THRESHOLD = 2
-ATTACK = 1612
-DECAY = 3225
+ATTACK = 1612   #~50 ms
+DECAY = 3225    #~100 ms
 
 ct = CounterTrigger()
 arr = np.array([])
